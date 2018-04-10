@@ -4,6 +4,28 @@ import sys
 from matplotlib import pyplot as plt
 from scipy.optimize import least_squares
 from math import cos, sin
+import os
+
+def saveDebugImg(imgIn, frmId, tag, points, color=None, postTag=''):
+    if not os.path.exists('debugImgs'):
+        os.makedirs('debugImgs')
+
+    imgD = imgIn.copy()
+    if isinstance(points, list):
+        imgD = cv2.drawKeypoints(imgIn, points, imgD, color=color)
+    else:
+        imgD = cv2.cvtColor(imgD,cv2.COLOR_GRAY2RGB)
+        for point in points:
+            cv2.circle(imgD, (point[0], point[1]), 2, color=color)
+
+    outFileName = 'debugImgs/' + tag + '_' + str(frmId)
+    if postTag != '':
+        outFileName = outFileName + '_' + postTag
+
+    outFileName = outFileName + '.png'
+    cv2.imwrite(outFileName, imgD)
+    return
+
 
 def genEulerZXZMatrix(psi, theta, sigma):
     # ref http://www.u.arizona.edu/~pen/ame553/Notes/Lesson%2008-A.pdf
@@ -21,7 +43,31 @@ def genEulerZXZMatrix(psi, theta, sigma):
     mat[2,2] = cos(theta)
 
     return mat
+'''
 
+def genEulerZXZMatrix(psi, theta, sigma):
+    mat = np.zeros((3,3))
+    c1 = cos(psi)
+    s1 = sin(psi)
+    c2 = cos(theta)
+    s2 = sin(theta)
+    c3 = cos(sigma)
+    s3 = sin(sigma)
+
+    mat[0,0] = c1 * c2
+    mat[0,1] = c1*s2*s3 - c3*s1
+    mat[0,2] = s1*s3 + c1*c3*s2
+
+    mat[1,0] = c2*s1
+    mat[1,1] = c1*c3 + s1*s2*s3
+    mat[1,2] = c3*s1*s2 - c1*s3
+
+    mat[2,0] = -s2
+    mat[2,1] = c2*s3
+    mat[2,2] = c2*c3
+
+    return mat
+'''
 def minimizeReprojection(dof,d2dPoints1, d2dPoints2, d3dPoints1, d3dPoints2, w2cMatrix):
     Rmat = genEulerZXZMatrix(dof[0], dof[1], dof[2])
     translationArray = np.array([[dof[3]], [dof[4]], [dof[5]]])
@@ -64,7 +110,9 @@ if __name__ == "__main__":
 
     sequence = 00   #sys.argv[1]
     startFrame = 0 #sys.argv[2]
-    endFrame = 1 #sys.argv[3]
+    endFrame = 10 #sys.argv[3]
+    plotTrajectory = False
+    outputDebug = False
 
     datapath = '../Data/' + '{0:02d}'.format(sequence)
 
@@ -84,6 +132,11 @@ if __name__ == "__main__":
 
     leftImagePath = datapath + '/image_0/'
     rightImagePath = datapath + '/image_1/'
+
+    translation = None#np.zeros((3,1))
+    rotation = None#np.ones((3,3))
+
+    traj = np.zeros((600,600,3), dtype=np.uint8)
 
     for frm in range(startFrame+1, endFrame+1):
 
@@ -107,8 +160,8 @@ if __name__ == "__main__":
 
         block = 15
         #emperical values from P1, P2 as suggested in Ocv documentation
-        P1 = 0 #block * block * 8
-        P2 = 0 #block * block * 32
+        P1 = block * block * 8
+        P2 = block * block * 32
 
         disparityEngine = cv2.StereoSGBM_create(minDisparity=0,numDisparities=16, blockSize=block, P1=P1, P2=P2)
         ImT1_disparity = disparityEngine.compute(ImT1_L, ImT1_R).astype(np.float32)
@@ -118,14 +171,13 @@ if __name__ == "__main__":
         ImT2_disparity = disparityEngine.compute(ImT2_L, ImT2_R).astype(np.float32)
         ImT2_disparityA = np.divide(ImT2_disparity, 16.0)
 
+        if outputDebug:
+            fname = 'debugImgs/diparity_' + str(frm) + '.png'
+            cv2.imwrite(fname, ImT2_disparityA)
+
         TILE_H = 10
         TILE_W = 20
         fastFeatureEngine = cv2.FastFeatureDetector_create()
-
-        # keypoints = fastFeatureEngine.detect(ImT1_L)
-        # ftDebug = ImT1_L
-        # ftDebug = cv2.drawKeypoints(ImT1_L, keypoints, ftDebug, color=(255,0,0))
-        # cv2.imwrite('ftDebug.png', ftDebug)
 
         #20x10 (wxh) tiles for extracting less features from images
         H,W = ImT1_L.shape
@@ -146,9 +198,8 @@ if __name__ == "__main__":
                     for kpt in keypoints:
                         kp.append(kpt)
 
-        ftDebug = ImT1_L
-        ftDebug = cv2.drawKeypoints(ImT1_L, kp, ftDebug, color=(255,0,0))
-        cv2.imwrite('ftDebug.png', ftDebug)
+        if outputDebug:
+            saveDebugImg(ImT1_L, frm-1, 'keypoints', kp, color=(255,0,0))
 
         # pack keypoint 2-d coords into numpy array
         trackPoints1 = np.zeros((len(kp),1,2), dtype=np.float32)
@@ -158,7 +209,7 @@ if __name__ == "__main__":
 
         # Parameters for lucas kanade optical flow
         lk_params = dict( winSize  = (15,15),
-                          maxLevel = 3,
+                          maxLevel = 2,
                           criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 0.03))
 
         trackPoints2, st, err = cv2.calcOpticalFlowPyrLK(ImT1_L, ImT2_L, trackPoints1, None, flags=cv2.MOTION_AFFINE, **lk_params)
@@ -176,18 +227,9 @@ if __name__ == "__main__":
         trackPoints1_KLT = trackPoints1_KLT[errThresholdedPoints, ...]
         trackPoints2_KLT = trackPoints2_KLT[errThresholdedPoints, ...]
 
-        # ftDebug = ImT1_L
-        # ftDebug = cv2.cvtColor(ftDebug,cv2.COLOR_GRAY2RGB)
-        # for points in trackPoints1_KLT:
-        #     cv2.circle(ftDebug, (points[0], points[1]), 2, color=(0,0,255))
-        # cv2.imwrite('ftDebug_trackedPoints1.png', ftDebug)
-
-
-        # ftDebug = ImT2_L
-        # ftDebug = cv2.cvtColor(ftDebug,cv2.COLOR_GRAY2RGB)
-        # for points in trackPoints2_KLT:
-        #     cv2.circle(ftDebug, (points[0], points[1]), 2, color=(0,255,0))
-        # cv2.imwrite('ftDebug_trackedPoints2.png', ftDebug)
+        if outputDebug:
+            saveDebugImg(ImT1_L, frm, 'trackedPt', trackPoints1_KLT, color=(0,255,255), postTag='0')
+            saveDebugImg(ImT2_L, frm, 'trackedPt', trackPoints2_KLT, color=(0,255,0), postTag='1')
 
         #compute right image disparity displaced points
         trackPoints1_KLT_L = trackPoints1_KLT
@@ -199,9 +241,14 @@ if __name__ == "__main__":
 
         disparityMinThres = 0.0
         disparityMaxThres = 100.0
+
         for i in range(trackPoints1_KLT_L.shape[0]):
             T1Disparity = ImT1_disparityA[int(trackPoints1_KLT_L[i,1]), int(trackPoints1_KLT_L[i,0])]
-            T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+
+            try:
+                T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+            except:
+                print (int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0]))
 
             if (T1Disparity > disparityMinThres and T1Disparity < disparityMaxThres
                 and T2Disparity > disparityMinThres and T2Disparity < disparityMaxThres):
@@ -260,8 +307,7 @@ if __name__ == "__main__":
             d3dPointsT2[i, :] = vSmall[0:-1]
 
         #tunable - def 0.01
-        distDifference = 0.05
-
+        distDifference = 0.1
         # in-lier detection algorithm
         numPoints = d3dPointsT1.shape[0]
         W = np.zeros((numPoints, numPoints))
@@ -326,15 +372,14 @@ if __name__ == "__main__":
         trackedPoints1_KLT_L = trackPoints1_KLT_L_3d[clique]
         trackedPoints2_KLT_L = trackPoints2_KLT_L_3d[clique]
 
-        ftDebug = ImT1_L
-        ftDebug = cv2.cvtColor(ftDebug,cv2.COLOR_GRAY2RGB)
-        for points in trackedPoints1_KLT_L:
-            cv2.circle(ftDebug, (points[0], points[1]), 2, color=(0,255,0))
+        if outputDebug:
+            saveDebugImg(ImT1_L, frm, 'clique', trackedPoints1_KLT_L, color=(0,255,255), postTag='0')
+            saveDebugImg(ImT2_L, frm, 'clique', trackedPoints2_KLT_L, color=(0,255,0), postTag='1')
 
-        cv2.imwrite('ftDebug_trackedPoints1_clique.png', ftDebug)
 
+        if (trackedPoints1_KLT_L.shape[0] < 6):
+            continue
         dSeed = np.zeros(6)
-
         #minimizeReprojection(d, trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1)
         optRes = least_squares(minimizeReprojection, dSeed, method='lm', max_nfev=2000,
                             args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
@@ -342,7 +387,7 @@ if __name__ == "__main__":
         error = optRes.fun
         pointsInClique = len(clique)
         e = error.reshape((pointsInClique*2, 3))
-        errorThreshold = 1.0
+        errorThreshold = 0.5
         xRes1 = np.where(e[0:pointsInClique, 0] >= errorThreshold)
         yRes1 = np.where(e[0:pointsInClique, 1] >= errorThreshold)
         zRes1 = np.where(e[0:pointsInClique, 2] >= errorThreshold)
@@ -358,10 +403,42 @@ if __name__ == "__main__":
             cliqued3dPointT1 = np.delete(cliqued3dPointT1, uPruneIdx, axis=0)
             cliqued3dPointT2 = np.delete(cliqued3dPointT2, uPruneIdx, axis=0)
 
-            optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=2000,
+            if (trackedPoints1_KLT_L.shape[0] >= 6):
+                optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=2000,
                             args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
 
+        #print (optRes.x)
+        if outputDebug:
+            saveDebugImg(ImT2_L, frm, 'cliqueReProjSelect', trackedPoints1_KLT_L, color=(0,255,0))
         #clique size check
         # reproj error check
         # r, t generation
-        # plot on map vs ground truth
+        Rmat = genEulerZXZMatrix(optRes.x[0], optRes.x[1], optRes.x[2])
+        translationArray = np.array([[optRes.x[3]], [optRes.x[4]], [optRes.x[5]]])
+        #print (translationArray)
+
+        #import pdb; pdb.set_trace()
+
+        if (isinstance(translation, np.ndarray)):
+            translation = translation + np.matmul(rotation, translationArray)
+        else:
+            translation = translationArray
+
+        if (isinstance(rotation, np.ndarray)):
+            rotation = np.matmul(Rmat, rotation)
+        else:
+            rotation = Rmat
+
+        outMat = np.hstack((rotation, translation))
+
+        print (outMat)
+        print ()
+
+        if plotTrajectory:
+            draw_x, draw_y = int(translation[0])+290, int(translation[2])+90
+            cv2.rectangle(traj, (10, 20), (600, 60), (0,0,0), -1)
+            text = "Coordinates: x=%2fm y=%2fm z=%2fm"%(translation[0],translation[1],translation[2])
+            cv2.putText(traj, text, (20,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1, 8)
+            cv2.circle(traj, (draw_x, draw_y), 1, (frm*255/(endFrame-startFrame),255-frm*255/(endFrame-startFrame),0), 1)
+            cv2.imshow('Trajectory', traj)
+            cv2.waitKey(1)
