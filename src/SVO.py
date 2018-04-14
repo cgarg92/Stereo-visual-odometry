@@ -133,8 +133,10 @@ if __name__ == "__main__":
     leftImagePath = datapath + '/image_0/'
     rightImagePath = datapath + '/image_1/'
 
-    translation = None#np.zeros((3,1))
-    rotation = None#np.ones((3,3))
+    translation = None
+    rotation = None
+
+    fpPoseOut = open('svoPoseOut.txt', 'wb')
 
     traj = np.zeros((600,600,3), dtype=np.uint8)
 
@@ -153,10 +155,6 @@ if __name__ == "__main__":
 
         imgPath = rightImagePath + '{0:06d}'.format(frm) + '.png';
         ImT2_R = cv2.imread(imgPath, 0)
-
-        # cv2.imshow('ImT1_L', ImT1_L)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
 
         block = 15
         #emperical values from P1, P2 as suggested in Ocv documentation
@@ -209,7 +207,7 @@ if __name__ == "__main__":
 
         # Parameters for lucas kanade optical flow
         lk_params = dict( winSize  = (15,15),
-                          maxLevel = 2,
+                          maxLevel = 3,
                           criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 0.03))
 
         trackPoints2, st, err = cv2.calcOpticalFlowPyrLK(ImT1_L, ImT2_L, trackPoints1, None, flags=cv2.MOTION_AFFINE, **lk_params)
@@ -285,8 +283,6 @@ if __name__ == "__main__":
             vSmall /= vSmall[-1]
 
             d3dPointsT1[i, :] = vSmall[0:-1]
-        #     print (X)
-        #     print (vSmall)
 
         for i in range(numPoints):
             #for i in range(1):
@@ -407,7 +403,6 @@ if __name__ == "__main__":
                 optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=2000,
                             args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
 
-        #print (optRes.x)
         if outputDebug:
             saveDebugImg(ImT2_L, frm, 'cliqueReProjSelect', trackedPoints1_KLT_L, color=(0,255,0))
         #clique size check
@@ -415,9 +410,6 @@ if __name__ == "__main__":
         # r, t generation
         Rmat = genEulerZXZMatrix(optRes.x[0], optRes.x[1], optRes.x[2])
         translationArray = np.array([[optRes.x[3]], [optRes.x[4]], [optRes.x[5]]])
-        #print (translationArray)
-
-        #import pdb; pdb.set_trace()
 
         if (isinstance(translation, np.ndarray)):
             translation = translation + np.matmul(rotation, translationArray)
@@ -430,6 +422,7 @@ if __name__ == "__main__":
             rotation = Rmat
 
         outMat = np.hstack((rotation, translation))
+        np.savetxt(fpPoseOut, outMat, fmt='%.6e', footer='\n')
 
         print (outMat)
         print ()
