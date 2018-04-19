@@ -1,7 +1,7 @@
 import numpy as np
+from matplotlib import pyplot as plt
 import cv2
 import sys
-from matplotlib import pyplot as plt
 from scipy.optimize import least_squares
 from math import cos, sin
 import os
@@ -229,10 +229,20 @@ if __name__ == "__main__":
             saveDebugImg(ImT1_L, frm, 'trackedPt', trackPoints1_KLT, color=(0,255,255), postTag='0')
             saveDebugImg(ImT2_L, frm, 'trackedPt', trackPoints2_KLT, color=(0,255,0), postTag='1')
 
-        #compute right image disparity displaced points
-        trackPoints1_KLT_L = trackPoints1_KLT
-        trackPoints2_KLT_L = trackPoints2_KLT
+        # check for validity of tracked point Coordinates
+        hPts = np.where(trackPoints2_KLT[:,1] >= H)
+        wPts = np.where(trackPoints2_KLT[:,0] >= W)
+        outTrackPts = hPts[0].tolist() + wPts[0].tolist()
+        outDeletePts = list(set(outTrackPts))
 
+        if len(outDeletePts) > 0:
+            trackPoints1_KLT_L = np.delete(trackPoints1_KLT, outDeletePts, axis=0)
+            trackPoints2_KLT_L = np.delete(trackPoints2_KLT, outDeletePts, axis=0)
+        else:
+            trackPoints1_KLT_L = trackPoints1_KLT
+            trackPoints2_KLT_L = trackPoints2_KLT
+
+        #compute right image disparity displaced points
         trackPoints1_KLT_R = np.copy(trackPoints1_KLT_L)
         trackPoints2_KLT_R = np.copy(trackPoints2_KLT_L)
         selectedPointMap = np.zeros(trackPoints1_KLT_L.shape[0])
@@ -242,11 +252,11 @@ if __name__ == "__main__":
 
         for i in range(trackPoints1_KLT_L.shape[0]):
             T1Disparity = ImT1_disparityA[int(trackPoints1_KLT_L[i,1]), int(trackPoints1_KLT_L[i,0])]
-
-            try:
-                T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
-            except:
-                print (int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0]))
+            T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+            # try:
+            #     T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+            # except:
+            #     print (int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0]))
 
             if (T1Disparity > disparityMinThres and T1Disparity < disparityMaxThres
                 and T2Disparity > disparityMinThres and T2Disparity < disparityMaxThres):
@@ -424,8 +434,8 @@ if __name__ == "__main__":
         outMat = np.hstack((rotation, translation))
         np.savetxt(fpPoseOut, outMat, fmt='%.6e', footer='\n')
 
-        print (outMat)
-        print ()
+        #print (outMat)
+        #print ()
 
         if plotTrajectory:
             draw_x, draw_y = int(translation[0])+290, int(translation[2])+90
@@ -435,3 +445,4 @@ if __name__ == "__main__":
             cv2.circle(traj, (draw_x, draw_y), 1, (frm*255/(endFrame-startFrame),255-frm*255/(endFrame-startFrame),0), 1)
             cv2.imshow('Trajectory', traj)
             cv2.waitKey(1)
+    cv2.imwrite('map.png', traj)
