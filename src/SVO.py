@@ -3,108 +3,10 @@ from matplotlib import pyplot as plt
 import cv2
 import sys
 from scipy.optimize import least_squares
-from math import cos, sin
 import os
-
-def saveDebugImg(imgIn, frmId, tag, points, color=None, postTag=''):
-    if not os.path.exists('debugImgs'):
-        os.makedirs('debugImgs')
-
-    imgD = imgIn.copy()
-    if isinstance(points, list):
-        imgD = cv2.drawKeypoints(imgIn, points, imgD, color=color)
-    else:
-        imgD = cv2.cvtColor(imgD,cv2.COLOR_GRAY2RGB)
-        for point in points:
-            cv2.circle(imgD, (point[0], point[1]), 2, color=color)
-
-    outFileName = 'debugImgs/' + tag + '_' + str(frmId)
-    if postTag != '':
-        outFileName = outFileName + '_' + postTag
-
-    outFileName = outFileName + '.png'
-    cv2.imwrite(outFileName, imgD)
-    return
-
-
-def genEulerZXZMatrix(psi, theta, sigma):
-    # ref http://www.u.arizona.edu/~pen/ame553/Notes/Lesson%2008-A.pdf
-    mat = np.zeros((3,3))
-    mat[0,0] = cos(psi) * cos(sigma) - sin(psi) * cos(theta) * sin(sigma)
-    mat[0,1] = -cos(psi) * sin(sigma) - sin(psi) * cos(theta) * cos(sigma)
-    mat[0,2] = sin(psi) * sin(theta)
-
-    mat[1,0] = sin(psi) * cos(sigma) + cos(psi) * cos(theta) * sin(sigma)
-    mat[1,1] = -sin(psi) * sin(sigma) + cos(psi) * cos(theta) * cos(sigma)
-    mat[1,2] = -cos(psi) * sin(theta)
-
-    mat[2,0] = sin(theta) * sin(sigma)
-    mat[2,1] = sin(theta) * cos(sigma)
-    mat[2,2] = cos(theta)
-
-    return mat
-'''
-
-def genEulerZXZMatrix(psi, theta, sigma):
-    mat = np.zeros((3,3))
-    c1 = cos(psi)
-    s1 = sin(psi)
-    c2 = cos(theta)
-    s2 = sin(theta)
-    c3 = cos(sigma)
-    s3 = sin(sigma)
-
-    mat[0,0] = c1 * c2
-    mat[0,1] = c1*s2*s3 - c3*s1
-    mat[0,2] = s1*s3 + c1*c3*s2
-
-    mat[1,0] = c2*s1
-    mat[1,1] = c1*c3 + s1*s2*s3
-    mat[1,2] = c3*s1*s2 - c1*s3
-
-    mat[2,0] = -s2
-    mat[2,1] = c2*s3
-    mat[2,2] = c2*c3
-
-    return mat
-'''
-def minimizeReprojection(dof,d2dPoints1, d2dPoints2, d3dPoints1, d3dPoints2, w2cMatrix):
-    Rmat = genEulerZXZMatrix(dof[0], dof[1], dof[2])
-    translationArray = np.array([[dof[3]], [dof[4]], [dof[5]]])
-    temp = np.hstack((Rmat, translationArray))
-    perspectiveProj = np.vstack((temp, [0, 0, 0, 1]))
-    #print (perspectiveProj)
-
-    numPoints = d2dPoints1.shape[0]
-    errorA = np.zeros((numPoints,3))
-    errorB = np.zeros((numPoints,3))
-
-    forwardProjection = np.matmul(w2cMatrix, perspectiveProj)
-    backwardProjection = np.matmul(w2cMatrix, np.linalg.inv(perspectiveProj))
-    for i in range(numPoints):
-        Ja = np.ones((3))
-        Jb = np.ones((3))
-        Wa = np.ones((4))
-        Wb = np.ones((4))
-
-        Ja[0:2] = d2dPoints1[i,:]
-        Jb[0:2] = d2dPoints2[i,:]
-        Wa[0:3] = d3dPoints1[i,:]
-        Wb[0:3] = d3dPoints2[i,:]
-
-        JaPred = np.matmul(forwardProjection, Wb)
-        JaPred /= JaPred[-1]
-        e1 = Ja - JaPred
-
-        JbPred = np.matmul(backwardProjection, Wa)
-        JbPred /= JbPred[-1]
-        e2 = Jb - JbPred
-
-        errorA[i,:] = e1
-        errorB[i,:] = e2
-
-    residual = np.vstack((errorA,errorB))
-    return residual.flatten()
+import inlierDetector
+from helperFunctions import genEulerZXZMatrix, minimizeReprojection
+from utils import saveDebugImg
 
 if __name__ == "__main__":
 
@@ -200,10 +102,8 @@ if __name__ == "__main__":
             saveDebugImg(ImT1_L, frm-1, 'keypoints', kp, color=(255,0,0))
 
         # pack keypoint 2-d coords into numpy array
-        trackPoints1 = np.zeros((len(kp),1,2), dtype=np.float32)
-        for i,kpt in enumerate(kp):
-            trackPoints1[i,:,0] = kpt.pt[0]
-            trackPoints1[i,:,1] = kpt.pt[1]
+        trackPoints1 = cv2.KeyPoint_convert(kp)
+        trackPoints1 = np.expand_dims(trackPoints1, axis=1)
 
         # Parameters for lucas kanade optical flow
         lk_params = dict( winSize  = (15,15),
@@ -314,60 +214,9 @@ if __name__ == "__main__":
 
         #tunable - def 0.01
         distDifference = 0.1
+
         # in-lier detection algorithm
-        numPoints = d3dPointsT1.shape[0]
-        W = np.zeros((numPoints, numPoints))
-
-        # diff of pairwise euclidean distance between same points in T1 and T2
-        for i in range(numPoints):
-            for j in range(numPoints):
-                T2Dist = np.linalg.norm(d3dPointsT2[i,:] - d3dPointsT2[j,:])
-                T1Dist = np.linalg.norm(d3dPointsT1[i,:] - d3dPointsT1[j,:])
-                if (abs(T2Dist - T1Dist) < distDifference):
-                    W[i, j] = 1
-
-        count = 0
-        maxn = 0
-        maxc = 0
-
-        # Find point with maximum degree and store in maxn
-        for i in range(numPoints):
-            for j in range(numPoints):
-                if W[i,j] == 1:
-                    count = count+1
-            if count > maxc:
-                maxc = count
-                maxn = i
-            count=0
-
-        clique = [maxn]
-        isin = True
-
-        while True:
-            potentialnodes = list()
-            # Find potential nodes which are connected to all nodes in the clique
-            for i in range(numPoints):
-                for j in range(len(clique)):
-                    isin = isin & bool(W[i, clique[j]])
-                if isin == True and i not in clique:
-                    potentialnodes.append(i)
-                isin=True
-
-            count = 0
-            maxn = 0
-            maxc = 0
-            # Find the node which is connected to the maximum number of potential nodes and store in maxn
-            for i in range(len(potentialnodes)):
-                for j in range(len(potentialnodes)):
-                    if W[potentialnodes[i], potentialnodes[j]] == 1:
-                        count = count+1
-                if count > maxc:
-                    maxc = count
-                    maxn = potentialnodes[i]
-                count = 0
-            if maxc == 0:
-                break
-            clique.append(maxn)
+        clique = inlierDetector.findClique(d3dPointsT1, d3dPointsT2, distDifference)
 
         # pick up clique point 3D coords and features for optimization
         pointsInClique = len(clique)
@@ -387,7 +236,7 @@ if __name__ == "__main__":
             continue
         dSeed = np.zeros(6)
         #minimizeReprojection(d, trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1)
-        optRes = least_squares(minimizeReprojection, dSeed, method='lm', max_nfev=2000,
+        optRes = least_squares(minimizeReprojection, dSeed, method='lm', max_nfev=200,
                             args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
 
         error = optRes.fun
@@ -410,7 +259,7 @@ if __name__ == "__main__":
             cliqued3dPointT2 = np.delete(cliqued3dPointT2, uPruneIdx, axis=0)
 
             if (trackedPoints1_KLT_L.shape[0] >= 6):
-                optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=2000,
+                optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=200,
                             args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
 
         if outputDebug:
@@ -445,4 +294,7 @@ if __name__ == "__main__":
             cv2.circle(traj, (draw_x, draw_y), 1, (frm*255/(endFrame-startFrame),255-frm*255/(endFrame-startFrame),0), 1)
             cv2.imshow('Trajectory', traj)
             cv2.waitKey(1)
+
+        if frm % 10 == 0:
+            print (frm)
     cv2.imwrite('map.png', traj)
