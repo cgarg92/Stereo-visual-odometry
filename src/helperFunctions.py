@@ -65,6 +65,29 @@ def minimizeReprojection(dof,d2dPoints1, d2dPoints2, d3dPoints1, d3dPoints2, w2c
     residual = np.vstack((errorA,errorB))
     return residual.flatten()
 
+def generate3DPoints(points2D_L, points2D_R, Proj1, Proj2):
+    numPoints = points2D_L.shape[0]
+    d3dPoints = np.ones((numPoints,3))
+
+    for i in range(numPoints):
+        pLeft = points2D_L[i,:]
+        pRight = points2D_R[i,:]
+
+        X = np.zeros((4,4))
+        X[0,:] = pLeft[0] * Proj1[2,:] - Proj1[0,:]
+        X[1,:] = pLeft[1] * Proj1[2,:] - Proj1[1,:]
+        X[2,:] = pRight[0] * Proj2[2,:] - Proj2[0,:]
+        X[3,:] = pRight[1] * Proj2[2,:] - Proj2[1,:]
+
+        [u,s,v] = np.linalg.svd(X)
+        v = v.transpose()
+        vSmall = v[:,-1]
+        vSmall /= vSmall[-1]
+
+        d3dPoints[i, :] = vSmall[0:-1]
+
+    return d3dPoints
+
 '''
 def genEulerZXZMatrix(psi, theta, sigma):
     mat = np.zeros((3,3))

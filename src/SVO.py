@@ -5,15 +5,15 @@ import sys
 from scipy.optimize import least_squares
 import os
 import inlierDetector
-from helperFunctions import genEulerZXZMatrix, minimizeReprojection
+from helperFunctions import genEulerZXZMatrix, minimizeReprojection, generate3DPoints
 from utils import saveDebugImg
 
 if __name__ == "__main__":
 
     sequence = 00   #sys.argv[1]
     startFrame = 0 #sys.argv[2]
-    endFrame = 10 #sys.argv[3]
-    plotTrajectory = False
+    endFrame =  1000#sys.argv[3]
+    plotTrajectory = True
     outputDebug = False
 
     datapath = '../Data/' + '{0:02d}'.format(sequence)
@@ -39,6 +39,12 @@ if __name__ == "__main__":
     rotation = None
 
     fpPoseOut = open('svoPoseOut.txt', 'wb')
+
+    groundTruthTraj = []
+    if plotTrajectory:
+        poseFile = datapath + '/' + '{0:02d}'.format(sequence) + '.txt'
+        fpPoseFile = open(poseFile, 'r')
+        groundTruthTraj = fpPoseFile.readlines()
 
     traj = np.zeros((600,600,3), dtype=np.uint8)
 
@@ -142,152 +148,124 @@ if __name__ == "__main__":
             trackPoints1_KLT_L = trackPoints1_KLT
             trackPoints2_KLT_L = trackPoints2_KLT
 
-        #compute right image disparity displaced points
-        trackPoints1_KLT_R = np.copy(trackPoints1_KLT_L)
-        trackPoints2_KLT_R = np.copy(trackPoints2_KLT_L)
-        selectedPointMap = np.zeros(trackPoints1_KLT_L.shape[0])
+        # WAR for static scenes - no way all points get tracked by KLT without error
+        pointDiff = trackPoints1_KLT_L - trackPoints2_KLT_L
+        pointDiffSum = np.sum(np.linalg.norm(pointDiff))
 
-        disparityMinThres = 0.0
-        disparityMaxThres = 100.0
+        if pointDiffSum >  (trackPoints1_KLT_L.shape[0] * 0.05):
+            #compute right image disparity displaced points
+            trackPoints1_KLT_R = np.copy(trackPoints1_KLT_L)
+            trackPoints2_KLT_R = np.copy(trackPoints2_KLT_L)
+            selectedPointMap = np.zeros(trackPoints1_KLT_L.shape[0])
 
-        for i in range(trackPoints1_KLT_L.shape[0]):
-            T1Disparity = ImT1_disparityA[int(trackPoints1_KLT_L[i,1]), int(trackPoints1_KLT_L[i,0])]
-            T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
-            # try:
-            #     T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
-            # except:
-            #     print (int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0]))
+            disparityMinThres = 0.0
+            disparityMaxThres = 100.0
 
-            if (T1Disparity > disparityMinThres and T1Disparity < disparityMaxThres
-                and T2Disparity > disparityMinThres and T2Disparity < disparityMaxThres):
-                trackPoints1_KLT_R[i, 0] = trackPoints1_KLT_L[i, 0] - T1Disparity
-                trackPoints2_KLT_R[i, 0] = trackPoints2_KLT_L[i, 0] - T2Disparity
-                selectedPointMap[i] = 1
+            for i in range(trackPoints1_KLT_L.shape[0]):
+                T1Disparity = ImT1_disparityA[int(trackPoints1_KLT_L[i,1]), int(trackPoints1_KLT_L[i,0])]
+                T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+                # try:
+                #     T2Disparity = ImT2_disparityA[int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0])]
+                # except:
+                #     print (int(trackPoints2_KLT_L[i,1]), int(trackPoints2_KLT_L[i,0]))
 
-        selectedPointMap = selectedPointMap.astype(bool)
-        trackPoints1_KLT_L_3d = trackPoints1_KLT_L[selectedPointMap, ...]
-        trackPoints1_KLT_R_3d = trackPoints1_KLT_R[selectedPointMap, ...]
-        trackPoints2_KLT_L_3d = trackPoints2_KLT_L[selectedPointMap, ...]
-        trackPoints2_KLT_R_3d = trackPoints2_KLT_R[selectedPointMap, ...]
+                if (T1Disparity > disparityMinThres and T1Disparity < disparityMaxThres
+                    and T2Disparity > disparityMinThres and T2Disparity < disparityMaxThres):
+                    trackPoints1_KLT_R[i, 0] = trackPoints1_KLT_L[i, 0] - T1Disparity
+                    trackPoints2_KLT_R[i, 0] = trackPoints2_KLT_L[i, 0] - T2Disparity
+                    selectedPointMap[i] = 1
 
-        # 3d point cloud triagulation
+            selectedPointMap = selectedPointMap.astype(bool)
+            trackPoints1_KLT_L_3d = trackPoints1_KLT_L[selectedPointMap, ...]
+            trackPoints1_KLT_R_3d = trackPoints1_KLT_R[selectedPointMap, ...]
+            trackPoints2_KLT_L_3d = trackPoints2_KLT_L[selectedPointMap, ...]
+            trackPoints2_KLT_R_3d = trackPoints2_KLT_R[selectedPointMap, ...]
 
-        numPoints = trackPoints1_KLT_L_3d.shape[0]
-        d3dPointsT1 = np.ones((numPoints,3))
-        d3dPointsT2 = np.ones((numPoints,3))
+            # 3d point cloud triagulation
+            numPoints = trackPoints1_KLT_L_3d.shape[0]
+            d3dPointsT1 = generate3DPoints(trackPoints1_KLT_L_3d, trackPoints1_KLT_R_3d, Proj1, Proj2)
+            d3dPointsT2 = generate3DPoints(trackPoints2_KLT_L_3d, trackPoints2_KLT_R_3d, Proj1, Proj2)
 
-        for i in range(numPoints):
-            #for i in range(1):
-            pLeft = trackPoints1_KLT_L_3d[i,:]
-            pRight = trackPoints1_KLT_R_3d[i,:]
+            #tunable - def 0.01
+            distDifference = 0.1
 
-            X = np.zeros((4,4))
-            X[0,:] = pLeft[0] * Proj1[2,:] - Proj1[0,:]
-            X[1,:] = pLeft[1] * Proj1[2,:] - Proj1[1,:]
-            X[2,:] = pRight[0] * Proj2[2,:] - Proj2[0,:]
-            X[3,:] = pRight[1] * Proj2[2,:] - Proj2[1,:]
+            # in-lier detection algorithm
+            clique = inlierDetector.findClique(d3dPointsT1, d3dPointsT2, distDifference)
 
-            [u,s,v] = np.linalg.svd(X)
-            v = v.transpose()
-            vSmall = v[:,-1]
-            vSmall /= vSmall[-1]
+            # pick up clique point 3D coords and features for optimization
+            pointsInClique = len(clique)
+            cliqued3dPointT1 = d3dPointsT1[clique]#np.zeros((pointsInClique, 3))
+            cliqued3dPointT2 = d3dPointsT2[clique]
 
-            d3dPointsT1[i, :] = vSmall[0:-1]
+            # points = features
+            trackedPoints1_KLT_L = trackPoints1_KLT_L_3d[clique]
+            trackedPoints2_KLT_L = trackPoints2_KLT_L_3d[clique]
 
-        for i in range(numPoints):
-            #for i in range(1):
-            pLeft = trackPoints2_KLT_L_3d[i,:]
-            pRight = trackPoints2_KLT_R_3d[i,:]
+            if outputDebug:
+                saveDebugImg(ImT1_L, frm, 'clique', trackedPoints1_KLT_L, color=(0,255,255), postTag='0')
+                saveDebugImg(ImT2_L, frm, 'clique', trackedPoints2_KLT_L, color=(0,255,0), postTag='1')
 
-            X = np.zeros((4,4))
-            X[0,:] = pLeft[0] * Proj1[2,:] - Proj1[0,:]
-            X[1,:] = pLeft[1] * Proj1[2,:] - Proj1[1,:]
-            X[2,:] = pRight[0] * Proj2[2,:] - Proj2[0,:]
-            X[3,:] = pRight[1] * Proj2[2,:] - Proj2[1,:]
-
-            [u,s,v] = np.linalg.svd(X)
-            v = v.transpose()
-            vSmall = v[:,-1]
-            vSmall /= vSmall[-1]
-
-            d3dPointsT2[i, :] = vSmall[0:-1]
-
-        #tunable - def 0.01
-        distDifference = 0.1
-
-        # in-lier detection algorithm
-        clique = inlierDetector.findClique(d3dPointsT1, d3dPointsT2, distDifference)
-
-        # pick up clique point 3D coords and features for optimization
-        pointsInClique = len(clique)
-        cliqued3dPointT1 = d3dPointsT1[clique]#np.zeros((pointsInClique, 3))
-        cliqued3dPointT2 = d3dPointsT2[clique]
-
-        # points = features
-        trackedPoints1_KLT_L = trackPoints1_KLT_L_3d[clique]
-        trackedPoints2_KLT_L = trackPoints2_KLT_L_3d[clique]
-
-        if outputDebug:
-            saveDebugImg(ImT1_L, frm, 'clique', trackedPoints1_KLT_L, color=(0,255,255), postTag='0')
-            saveDebugImg(ImT2_L, frm, 'clique', trackedPoints2_KLT_L, color=(0,255,0), postTag='1')
-
-
-        if (trackedPoints1_KLT_L.shape[0] < 6):
-            continue
-        dSeed = np.zeros(6)
-        #minimizeReprojection(d, trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1)
-        optRes = least_squares(minimizeReprojection, dSeed, method='lm', max_nfev=200,
-                            args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
-
-        error = optRes.fun
-        pointsInClique = len(clique)
-        e = error.reshape((pointsInClique*2, 3))
-        errorThreshold = 0.5
-        xRes1 = np.where(e[0:pointsInClique, 0] >= errorThreshold)
-        yRes1 = np.where(e[0:pointsInClique, 1] >= errorThreshold)
-        zRes1 = np.where(e[0:pointsInClique, 2] >= errorThreshold)
-        xRes2 = np.where(e[pointsInClique:2*pointsInClique, 0] >= errorThreshold)
-        yRes2 = np.where(e[pointsInClique:2*pointsInClique, 1] >= errorThreshold)
-        zRes2 = np.where(e[pointsInClique:2*pointsInClique, 2] >= errorThreshold)
-
-        pruneIdx = xRes1[0].tolist() + yRes1[0].tolist() + zRes1[0].tolist() + xRes2[0].tolist() + yRes2[0].tolist() +  zRes2[0].tolist()
-        if (len(pruneIdx) > 0):
-            uPruneIdx = list(set(pruneIdx))
-            trackedPoints1_KLT_L = np.delete(trackedPoints1_KLT_L, uPruneIdx, axis=0)
-            trackedPoints2_KLT_L = np.delete(trackedPoints2_KLT_L, uPruneIdx, axis=0)
-            cliqued3dPointT1 = np.delete(cliqued3dPointT1, uPruneIdx, axis=0)
-            cliqued3dPointT2 = np.delete(cliqued3dPointT2, uPruneIdx, axis=0)
 
             if (trackedPoints1_KLT_L.shape[0] >= 6):
-                optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=200,
-                            args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
+                dSeed = np.zeros(6)
+                #minimizeReprojection(d, trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1)
+                optRes = least_squares(minimizeReprojection, dSeed, method='lm', max_nfev=200,
+                                    args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
 
-        if outputDebug:
-            saveDebugImg(ImT2_L, frm, 'cliqueReProjSelect', trackedPoints1_KLT_L, color=(0,255,0))
-        #clique size check
-        # reproj error check
-        # r, t generation
-        Rmat = genEulerZXZMatrix(optRes.x[0], optRes.x[1], optRes.x[2])
-        translationArray = np.array([[optRes.x[3]], [optRes.x[4]], [optRes.x[5]]])
+                error = optRes.fun
+                pointsInClique = len(clique)
+                e = error.reshape((pointsInClique*2, 3))
+                errorThreshold = 0.5
+                xRes1 = np.where(e[0:pointsInClique, 0] >= errorThreshold)
+                yRes1 = np.where(e[0:pointsInClique, 1] >= errorThreshold)
+                zRes1 = np.where(e[0:pointsInClique, 2] >= errorThreshold)
+                xRes2 = np.where(e[pointsInClique:2*pointsInClique, 0] >= errorThreshold)
+                yRes2 = np.where(e[pointsInClique:2*pointsInClique, 1] >= errorThreshold)
+                zRes2 = np.where(e[pointsInClique:2*pointsInClique, 2] >= errorThreshold)
 
-        if (isinstance(translation, np.ndarray)):
-            translation = translation + np.matmul(rotation, translationArray)
-        else:
-            translation = translationArray
+                pruneIdx = xRes1[0].tolist() + yRes1[0].tolist() + zRes1[0].tolist() + xRes2[0].tolist() + yRes2[0].tolist() +  zRes2[0].tolist()
+                if (len(pruneIdx) > 0):
+                    uPruneIdx = list(set(pruneIdx))
+                    trackedPoints1_KLT_L = np.delete(trackedPoints1_KLT_L, uPruneIdx, axis=0)
+                    trackedPoints2_KLT_L = np.delete(trackedPoints2_KLT_L, uPruneIdx, axis=0)
+                    cliqued3dPointT1 = np.delete(cliqued3dPointT1, uPruneIdx, axis=0)
+                    cliqued3dPointT2 = np.delete(cliqued3dPointT2, uPruneIdx, axis=0)
 
-        if (isinstance(rotation, np.ndarray)):
-            rotation = np.matmul(Rmat, rotation)
-        else:
-            rotation = Rmat
+                    if (trackedPoints1_KLT_L.shape[0] >= 6):
+                        optRes = least_squares(minimizeReprojection, optRes.x, method='lm', max_nfev=200,
+                                    args=(trackedPoints1_KLT_L, trackedPoints2_KLT_L, cliqued3dPointT1, cliqued3dPointT2, Proj1))
+
+                if outputDebug:
+                    saveDebugImg(ImT2_L, frm, 'cliqueReProjSelect', trackedPoints1_KLT_L, color=(0,255,0))
+                #clique size check
+                # reproj error check
+                # r, t generation
+                Rmat = genEulerZXZMatrix(optRes.x[0], optRes.x[1], optRes.x[2])
+                translationArray = np.array([[optRes.x[3]], [optRes.x[4]], [optRes.x[5]]])
+
+                if (isinstance(translation, np.ndarray)):
+                    translation = translation + np.matmul(rotation, translationArray)
+                else:
+                    translation = translationArray
+
+                if (isinstance(rotation, np.ndarray)):
+                    rotation = np.matmul(Rmat, rotation)
+                else:
+                    rotation = Rmat
 
         outMat = np.hstack((rotation, translation))
         np.savetxt(fpPoseOut, outMat, fmt='%.6e', footer='\n')
 
-        #print (outMat)
-        #print ()
+        # print (outMat)
+        # print ()
 
         if plotTrajectory:
             draw_x, draw_y = int(translation[0])+290, int(translation[2])+90
+            grndPose = groundTruthTraj[frm].strip().split()
+            grndX = int(float(grndPose[3])) + 290
+            grndY = int(float(grndPose[11])) + 90
+
+            cv2.circle(traj, (grndX,grndY), 1, (0,0,255), 2)
             cv2.rectangle(traj, (10, 20), (600, 60), (0,0,0), -1)
             text = "Coordinates: x=%2fm y=%2fm z=%2fm"%(translation[0],translation[1],translation[2])
             cv2.putText(traj, text, (20,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1, 8)
