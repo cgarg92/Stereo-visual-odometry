@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 def saveDebugImg(imgIn, frmId, tag, points, color=None, postTag=''):
     if not os.path.exists('debugImgs'):

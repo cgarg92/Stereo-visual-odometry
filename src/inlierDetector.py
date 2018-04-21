@@ -88,4 +88,12 @@ def findClique(d3dPointsT1, d3dPointsT2, distDifference):
         if maxc == 0:
             break
         clique.append(maxn)
+
+    # append to clique if not 6 points
+    while (len(clique) < 6):
+        pt = int(np.random.uniform(0, numPoints))
+        connectedComp =  np.sum(W[pt,:])
+        if connectedComp > 0:
+            if pt not in clique:
+                clique.append(pt)
     return clique

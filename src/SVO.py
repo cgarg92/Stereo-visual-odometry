@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     sequence = 00   #sys.argv[1]
     startFrame = 0 #sys.argv[2]
-    endFrame =  1000#sys.argv[3]
+    endFrame =  10#sys.argv[3]
     plotTrajectory = True
     outputDebug = False
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     translation = None
     rotation = None
 
-    fpPoseOut = open('svoPoseOut.txt', 'wb')
+    fpPoseOut = open('svoPoseOut.txt', 'w')
 
     groundTruthTraj = []
     if plotTrajectory:
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
             # in-lier detection algorithm
             clique = inlierDetector.findClique(d3dPointsT1, d3dPointsT2, distDifference)
-
+            #print (frm, trackPoints1_KLT.shape[0],len(outDeletePts), len(selectedPointMap),d3dPointsT1.shape[0], len(clique))
             # pick up clique point 3D coords and features for optimization
             pointsInClique = len(clique)
             cliqued3dPointT1 = d3dPointsT1[clique]#np.zeros((pointsInClique, 3))
@@ -254,7 +254,16 @@ if __name__ == "__main__":
                     rotation = Rmat
 
         outMat = np.hstack((rotation, translation))
-        np.savetxt(fpPoseOut, outMat, fmt='%.6e', footer='\n')
+        #np.savetxt(fpPoseOut, outMat, fmt='%.6e', footer='\n')
+        matList = outMat.tolist()
+        outtxt = ''
+        for val in matList:
+            for v in val:
+                outtxt = outtxt + '{0:06e}'.format(v) + ' '
+
+        outtxt = outtxt.rstrip()
+        outtxt = outtxt + '\n'
+        fpPoseOut.write(outtxt)
 
         # print (outMat)
         # print ()
