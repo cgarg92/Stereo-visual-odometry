@@ -57,10 +57,10 @@ For feature matching between images at time t and t+1, we used Kanade–Lucas–
 
 ### 3D Point Triangulation
 
+EDIT, ADD DETAILS
 Corresponding feature points (u,v) from left and right image
 Disparity displaced right image coordinate
 Least square minimization on system of equations for (𝑋𝑤) ⃗, solved using SVD
---------------------
 
 ### Inlier Detection
 
