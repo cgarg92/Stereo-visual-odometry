@@ -57,11 +57,10 @@ For feature matching between images at time t and t+1, we used Kanade–Lucas–
 
 ### 3D Point Triangulation
 
-----------
 Corresponding feature points (u,v) from left and right image
 Disparity displaced right image coordinate
 Least square minimization on system of equations for (𝑋𝑤) ⃗, solved using SVD
------------
+--------------------
 
 ### Inlier Detection
 
@@ -69,5 +68,7 @@ We used the Inlier Detection method to find the largest subset of consistent mat
 
 ### Motion Estimate
 
-We used the Levenberg-Marquardt least squares estimation to minimize the re-projection error which was expresses as e= ∑((𝑗𝑎 −𝑃Δ𝑤𝑏)^(2)+(𝑗𝑏 −𝑃Δ^(−1) 𝑤𝑎)^(2)).
+We used the Levenberg-Marquardt least squares estimation to minimize the re-projection error which was expresses as e= ∑((𝑗𝑎 −𝑃Δ𝑤𝑏)^(2)+(𝑗𝑏 −𝑃Δ^(−1) 𝑤𝑎)^(2)) PUT PICTURE OF EQUATION HERE.
+
+## Results
 
