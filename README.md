@@ -12,9 +12,9 @@ Visual Odometry is used as a building block of a larger problem known as Simulta
 
 * The most important application of Visual Odometry is prediction of the trajectory of a moving robot/vehicle in uneven or slippery terrain. In uneven and slippery terains, wheels tend to slip and in such scenarios, wheel rotation calculations become unrealiable and visual odometry algorithms are used to give more accurate estimates of motion.
 
-*Motion estimation for vehicles 
-  *HD mapping
-  *Autonomous cars
+* Motion estimation for vehicles 
+  * HD mapping
+  * Autonomous cars
 
 * Possible use in AR/VR applications
 
@@ -35,13 +35,17 @@ Visual Odometry is used as a building block of a larger problem known as Simulta
 * Augmented Stereo Visual Odometry
   * Visual Odometry can be augmented by using data from various sensors such as Lidar, Time of flight data, RGB-Depth and GPS.
 
+## The Dataset
 
+* The dataset we used was the KITTI Vision Benchmark Suite dataset by KIT, Germany. 
+* The dataset included undistorted and stereo rectified grayscale and color image data along with LIDAR laser data.
+* The calibration camera projection matrices are provided.
+* The output poses for each frame are with respect to the 0th image in the sequence
 
+## Our Approach
+
+Our approach consists of the following steps.
+
+### Feature Detection
  
-  
-
-
-
-
-
-#
+We used the FAST (Features from Accelerated Segment Test) corner detection method for feature detection. 
