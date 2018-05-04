@@ -49,3 +49,25 @@ Our approach consists of the following steps.
 ### Feature Detection
  
 We used the FAST (Features from Accelerated Segment Test) corner detection method for feature detection. 
+* To ensure that the features we got from the FAST algorithm were spread out and not concentrated in a certain region, we used   feature bucketing in which we divide our image into a grid and only take a ------------------ number of features from each     part of the grid.
+
+### Feature Matching
+ 
+For feature matching between images at time t and t+1, we used Kanade–Lucas–Tomasi feature tracker with a search window size of 15x15 and 3 pyramid levels. To remove noise, we also did some pruning at this stage.
+
+### 3D Point Triangulation
+
+----------
+Corresponding feature points (u,v) from left and right image
+Disparity displaced right image coordinate
+Least square minimization on system of equations for (𝑋𝑤) ⃗, solved using SVD
+-----------
+
+### Inlier Detection
+
+We used the Inlier Detection method to find the largest subset of consistent matches. We defined a match as a pair of points in which the distance between the points was the nearly the same in the images at time t and t+1. 
+
+### Motion Estimate
+
+We used the Levenberg-Marquardt least squares estimation to minimize the re-projection error which was expresses as e= ∑((𝑗𝑎 −𝑃Δ𝑤𝑏)^(2)+(𝑗𝑏 −𝑃Δ^(−1) 𝑤𝑎)^(2)).
+
