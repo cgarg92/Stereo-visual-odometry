@@ -1,4 +1,22 @@
-Stereo Visual Odometry
+# Introduction
+
+Localization is an essential feature for autonomous vehicles and therefore Visual Odometry has been a well investigated area in robotics vision. Visual Odometry helps augment the information where conventional sensors such as wheel odometer and inertial sensors such as gyroscopes and accelerometers fail to give correct information. Visual odometry estimates vehicle motion from a sequence of camera images from an onboard camera. It produces full 6-DOF (degrees of freedom) motion estimate, that is the translation along the axis and rotation around each of co-ordinate axis.
+
+ Over the years, visual odometry has evolved from using stereo images to monocular imaging and now incorporating LiDAR laser information which has started to become mainstream in upcoming cars with self-driving capabilities. It is also a prerequisite for applications like obstacle detection, simultaneous localization and mapping (SLAM) and other tasks. Visual-SLAM (VSLAM) is a much more evolved variant of visual odometry which obtain global, consistent estimate of robot path. The path drift in VSLAM is reduced by identifying loop closures.
+ 
+Some of the challenges encountered by visual odometry algorithms are:
+1.	Varying lighting conditions
+2.	In-sufficient scene overlap between consecutive frames
+3.	Lack of texture to accurately estimate motion
+
+## Types of Visual Odometry
+
+* ### Monocular Visual Odometry
+A single camera is used to capture motion. Usually a five-point relative pose  estimation method is used to estimate motion, motion computed is on a relative scale. Typically used in hybrid methods where other sensor data is also available.
+
+* ### Stereo Visual Odometry
+A calibrated stereo camera pair is used which helps compute the feature depth between images at various time points. Computed output is actual motion (on scale). If only faraway features are tracked then degenerates to monocular case.
+
 
 ## What is Visual Odometry?
 
