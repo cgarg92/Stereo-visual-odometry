@@ -55,7 +55,7 @@ Frame to frame camera motion is estimated by minimizing the image re-projection 
 
 # Results
 <video src="./docs/demoVideo.mp4" width="900" height="350" controls preload></video>
-Demo Video <br>
+**Demo Video** <br>
 
 <img src="./docs/results_1.png" width="1050" height="350">
 **Figure 6:** Output trajectory for sequence 00 and 02 from KITTI dataset <br>
@@ -67,6 +67,7 @@ Demo Video <br>
 **Figure 8:** Output trajectory for sequence 00 for Clique inlier detection and RANSAC outlier rejection <br>
 
 # Discussion & Future work
+
 
 # References
 [1] A. Howard. Real-time stereo visual odometry for autonomous ground vehicles. In IEEE Int. Conf. on Intelligent Robots and Systems , Sep 2008
