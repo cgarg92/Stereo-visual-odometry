@@ -70,6 +70,8 @@ Demo Video <br>
 
 # References
 [1] A. Howard. Real-time stereo visual odometry for autonomous ground vehicles. In IEEE Int. Conf. on Intelligent Robots and Systems , Sep 2008
+
 [2] http://www.cvlibs.net/datasets/kitti/eval_odometry.php
+
 [3] C. B. Choy, J. Gwak, S. Savarese and M. Chandraker. Universal Correspondence Network. NIPS , 2016
 
