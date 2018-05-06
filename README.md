@@ -20,8 +20,10 @@ A calibrated stereo camera pair is used which helps compute the feature depth be
 # Algorithm Description
 Our implementation is a variation of [1] by Andrew Howard. We have used KITTI visual odometry [2] dataset for experimentation. All the computation is done on grayscale images. The top level pipeline is shown in figure 1.
 
+<div align="center"
 <img src="./docs/schema.png" width="400" height="200">
 <br>**Figure 1:** Stereo Visual Odometry Pipeline<br>
+</div>
 
 * ## Input Image sequence
 Capture  stereo image pair at time T and T+1. The images are then processed to compensate for lens distortion. To simplify the task of disparity map computation stereo rectification is done so that epipolar lines become parallel to horizontal. In KITTI dataset the input images are already corrected for lens distortion and stereo rectified.
