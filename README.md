@@ -67,7 +67,11 @@ Frame to frame camera motion is estimated by minimizing the image re-projection 
 **Figure 8:** Output trajectory for sequence 00 for Clique inlier detection and RANSAC outlier rejection <br>
 
 # Discussion & Future work
+The results obtained match the ground truth trajectory initially, but small errors accumulate resulting in egregious poses if algorithm is run for longer travel time. It is to be noted that although the absolute position is wrong for latter frames the relative motion (translation and rotation) is still tracked. SLAM characteristics like loop closure can be used to help correct the drift in measurement.
 
+There are several tunable parameters in the algorithm which can be tuned to adjust the accuracy of output, some of the parameters are: block size for disparity computation and KLT tracker, various error thresholds such as for KLT tracker, feature re-projection, clique rigidity constraint. More work is required to develop an adaptive framework which adjusts their parameters based on feedback and other sensor data. 
+
+All brightness-based motion tracker perform poorly for sudden changes in image luminance, therefore a robust brightness invariant motion tracking algorithm is needed to accurately predict motion. Neural networks such as Universal Correspondence Networks [3] can be tried out but the real-time runtime constrains of visual odometry may not accommodate for it. A faster inlier detection algorithm is also needed to speed up the algorithm, added heuristics such as an estimate how accurate each feature 2D-3D point pair is can help with early termination of inlier detection algorithm. 
 
 # References
 [1] A. Howard. Real-time stereo visual odometry for autonomous ground vehicles. In IEEE Int. Conf. on Intelligent Robots and Systems , Sep 2008
