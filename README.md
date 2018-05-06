@@ -65,7 +65,7 @@ Frame to frame camera motion is estimated by minimizing the image re-projection 
 
 # Results
 <video src="./docs/demoVideo.mp4" width="900" height="350" controls preload></video>
-**Demo Video** <br>
+<div align="center">Demo Video </div><br>
 
 <div align="center">
 <img src="./docs/results_1.png" width="1050" height="350">
