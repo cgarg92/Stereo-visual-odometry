@@ -1,3 +1,10 @@
+<div align="center">
+ <font size=20> Stereo Visual Odometry</font><br>
+Chirayu Garg, Utkarsh Jain<br>
+ University of Wisconsin-Madison<br>
+ {cgarg2, utkarsh.jain}@wisc.edu
+</div>
+
 # Introduction
 
 Localization is an essential feature for autonomous vehicles and therefore Visual Odometry has been a well investigated area in robotics vision. Visual Odometry helps augment the information where conventional sensors such as wheel odometer and inertial sensors such as gyroscopes and accelerometers fail to give correct information. Visual odometry estimates vehicle motion from a sequence of camera images from an onboard camera. It produces full 6-DOF (degrees of freedom) motion estimate, that is the translation along the axis and rotation around each of co-ordinate axis.
