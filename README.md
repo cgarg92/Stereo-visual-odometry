@@ -55,14 +55,15 @@ Frame to frame camera motion is estimated by minimizing the image re-projection 
 
 # Results
 <video src="./docs/demoVideo.mp4" width="900" height="350" controls preload></video>
-<br> Demo Video <br>
-<img src="./docs/results_1.png" width="1000" height="350">
+Demo Video <br>
+
+<img src="./docs/results_1.png" width="1050" height="350">
 <br>Figure 6: Output trajectory for sequence 00 and 02 from KITTI dataset <br>
 
-<img src="./docs/results_2.png" width="1000" height="350">
+<img src="./docs/results_2.png" width="1050" height="350">
 <br>Figure 7: Output trajectory for sequence 02 for FAST and SIFT features <br>
 
-<img src="./docs/results_3.png" width="1000" height="350">
+<img src="./docs/results_3.png" width="1050" height="350">
 <br>Figure 8: Output trajectory for sequence 00 for Clique inlier detection and RANSAC outlier rejection <br>
 
 # Discussion & Future work
