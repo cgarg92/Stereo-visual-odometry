@@ -103,3 +103,5 @@ All brightness-based motion tracker perform poorly for sudden changes in image l
 
 [3] C. B. Choy, J. Gwak, S. Savarese and M. Chandraker. Universal Correspondence Network. NIPS , 2016
 
+## Note
+The powerpoint presentation for same work can be found [here](./docs/StereoVisualOdometry_Grp17.pptx)
