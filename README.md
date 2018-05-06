@@ -22,7 +22,7 @@ Our implementation is a variation of [1] by Andrew Howard. We have used KITTI vi
 
 <div align="center">
 <img src="./docs/schema.png" width="400" height="200">
-<br>**Figure 1:** Stereo Visual Odometry Pipeline<br>
+<br>Figure 1: Stereo Visual Odometry Pipeline<br>
 </div>
 
 * ## Input Image sequence
@@ -31,17 +31,23 @@ Capture  stereo image pair at time T and T+1. The images are then processed to c
 * ## Feature Detection
 Features are generated on left camera image at time T using FAST (Features from Accelerated Segment Test) corner detector. FAST is computationally less expensive than other feature detectors like SIFT and SURF. To accurately compute the motion between image frames, feature bucketing is used. The image is divided into several non-overlapping rectangles and a maximum number (10) of feature points  with highest response value are then selected from each bucket. There are two benefits of bucketing: i) Input features are well distributed throughout the image which results in higher accuracy in motion estimation. ii) Due to less number of features computation complexity of algorithm is reduced which is a requirement in low-latency applications. Disparity map for time T is also generated using the left and right image pair.
 
+<div align="center">
 <img src="./docs/1_FAST_features.png" width="900" height="300">
-**Figure 2:** FAST Features<br>
+Figure 2: FAST Features<br>
+</div>
 
 * ## Feature Tracking
 Features generated in previous step are then searched in image at time T+1. The original paper [1] does feature matching by computing the feature descriptors and then comparing them from images at both time instances. More recent literature uses KLT (Kanade-Lucas-Tomasi) tracker for feature matching. Features from image at time T are tracked at time T+1 using a 15x15 search windows and 3 image pyramid level search. KLT tracker outputs the corresponding coordinates for each input feature and accuracy and error measure by which each feature was tracked. Feature points that are tracked with high error or lower accuracy are dropped from further computation.
 
+<div align="center">
 <img src="./docs/2_keyPointsT1.png" width="900" height="300">
-**Figure 3:** Features at time T<br>
+Figure 3: Features at time T<br>
+</div>
 
+<div align="center">
 <img src="./docs/3_keyPointsT2.png" width="900" height="300">
-**Figure 4:** KLT tracked features at time T+1<br>
+Figure 4: KLT tracked features at time T+1<br>
+</div>
 
 * ## 3D Point Cloud Generation
 Now that we have the 2D points at time T and T+1, corresponding 3D points with respect to left camera are generated using disparity information and camera projection matrices. For each feature point a system of equations is formed for corresponding 3D coordinates (world coordinates) using left, right image pair and it is solved using singular value decomposition.
@@ -52,21 +58,29 @@ Instead of an outlier rejection algorithm this algorithms uses an inlier detecti
 * ## Motion Estimation
 Frame to frame camera motion is estimated by minimizing the image re-projection error for all matching feature points. Image re-projection here means that for a pair of corresponding matching points Ja and Jb at time T and T+1, there exits corresponding world coordinates Wa and Wb. The world coordinates are re-projected back into image to estimate the 2D points coordinate for complementary time step and the distance between the true and projected 2D point is minimized using Levenberg-Marquardt least square optimization.  
 
+<div align="center">
 <img src="./docs/reprojection.png" height="275">
-<br>**Figure 5:** Image Reprojection : Wb --> Ja  and Wa --> Jb <br>
+<br>Figure 5: Image Reprojection : Wb --> Ja  and Wa --> Jb <br>
+</div>
 
 # Results
 <video src="./docs/demoVideo.mp4" width="900" height="350" controls preload></video>
 **Demo Video** <br>
 
+<div align="center">
 <img src="./docs/results_1.png" width="1050" height="350">
-**Figure 6:** Output trajectory for sequence 00 and 02 from KITTI dataset <br>
+Figure 6: Output trajectory for sequence 00 and 02 from KITTI dataset <br>
+</div>
 
+<div align="center">
 <img src="./docs/results_2.png" width="1050" height="350">
-**Figure 7:** Output trajectory for sequence 02 for FAST and SIFT features <br>
+Figure 7: Output trajectory for sequence 02 for FAST and SIFT features <br>
+</div>
 
+<div align="center">
 <img src="./docs/results_3.png" width="1050" height="350">
-**Figure 8:** Output trajectory for sequence 00 for Clique inlier detection and RANSAC outlier rejection <br>
+Figure 8: Output trajectory for sequence 00 for Clique inlier detection and RANSAC outlier rejection <br>
+</div>
 
 # Discussion & Future work
 The results obtained match the ground truth trajectory initially, but small errors accumulate resulting in egregious poses if algorithm is run for longer travel time. It is to be noted that although the absolute position is wrong for latter frames the relative motion (translation and rotation) is still tracked. SLAM characteristics like loop closure can be used to help correct the drift in measurement.
