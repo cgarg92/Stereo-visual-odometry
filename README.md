@@ -20,7 +20,7 @@ A calibrated stereo camera pair is used which helps compute the feature depth be
 # Algorithm Description
 Our implementation is a variation of [1] by Andrew Howard. We have used KITTI visual odometry [2] dataset for experimentation. All the computation is done on grayscale images. The top level pipeline is shown in figure 1.
 
-<div align="center"
+<div align="center">
 <img src="./docs/schema.png" width="400" height="200">
 <br>**Figure 1:** Stereo Visual Odometry Pipeline<br>
 </div>
