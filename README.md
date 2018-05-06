@@ -1,5 +1,5 @@
 <div align="center">
- <font size=20> Stereo Visual Odometry</font><br>
+ <font size="20"> Stereo Visual Odometry</font><br>
 Chirayu Garg, Utkarsh Jain<br>
  University of Wisconsin-Madison<br>
  {cgarg2, utkarsh.jain}@wisc.edu
