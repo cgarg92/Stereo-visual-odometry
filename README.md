@@ -71,14 +71,17 @@ Frame to frame camera motion is estimated by minimizing the image re-projection 
 </div>
 
 # Results
+We have implemented above algorithm using Python 3 and OpenCV 3.0 and source code is maintained [here](https://github.com/cgarg92/Stereo-visual-odometry/). KITTI visual odometry [2] dataset is used for evaluation. In the KITTI dataset the ground truth poses are given with respect to the zeroth frame of the camera. Following video shows a short demo of trajectory computed along with input video data.
 <video src="./docs/demoVideo.mp4" width="900" height="350" controls preload></video>
 <div align="center">Demo Video </div><br>
 
+Figure 6 illustrates computed trajectory for two sequences. For linear translational motion the algorithm tracks ground truth well, however for continuous turning motion such as going through a hair pin bend the correct angular motion is not computed which results in error throughout the latter estimates. For very fast translational motion the algorithm does not perform well because of lack of overlap between consecutive images.
 <div align="center">
 <img src="./docs/results_1.png" width="1050" height="350">
 Figure 6: Output trajectory for sequence 00 and 02 from KITTI dataset <br>
 </div>
 
+Variation of algorithm using SIFT features instead of FAST features was also tried, a comparison is shown in figure 7. At certain corners SIFT performs slightly well, but we cant be certain and after more parameter tuning FAST features can also give similar results. Figure 8 shows a comparison between using clique based inlier detection algorithm versus RANSAC to find consistent 2D-3D point pair. RANSAC performs well at certain points but the number of RANSAC iteration required is high which results in very large motion estimation time per frame.
 <div align="center">
 <img src="./docs/results_2.png" width="1050" height="350">
 Figure 7: Output trajectory for sequence 02 for FAST and SIFT features <br>
