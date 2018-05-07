@@ -57,13 +57,13 @@ Figure 4: KLT tracked features at time T+1<br>
 </div>
 
 * ## 3D Point Cloud Generation
-Now that we have the 2D points at time T and T+1, corresponding 3D points with respect to left camera are generated using disparity information and camera projection matrices. For each feature point a system of equations is formed for corresponding 3D coordinates (world coordinates) using left, right image pair and it is solved using singular value decomposition.
+Now that we have the 2D points at time T and T+1, corresponding 3D points with respect to left camera are generated using disparity information and camera projection matrices. For each feature point a system of equations is formed for corresponding 3D coordinates (world coordinates) using left, right image pair and it is solved using singular value decomposition to obtain 3D points.
 
 * ## Inlier Detection
-Instead of an outlier rejection algorithm this algorithms uses an inlier detection algorithm which exploits the rigidity of scene points to find a subset of consistent 3D points at both time steps. The key idea here is the observation that although the absolute position of two feature points will be different at different time points the relative distance between them remains the same. If any such distance is not same, then either there is an error in 3D triangulation of at least one of the two features, or we have triangulated is moving, which we cannot use in the next step. 
+Instead of an outlier rejection algorithm this paper uses an inlier detection algorithm which exploits the rigidity of scene points to find a subset of consistent 3D points at both time steps. The key idea here is the observation that although the absolute position of two feature points will be different at different time points the relative distance between them remains the same. If any such distance is not same, then either there is an error in 3D triangulation of at least one of the two features, or we have triangulated is moving, which we cannot use in the next step. 
 
 * ## Motion Estimation
-Frame to frame camera motion is estimated by minimizing the image re-projection error for all matching feature points. Image re-projection here means that for a pair of corresponding matching points Ja and Jb at time T and T+1, there exits corresponding world coordinates Wa and Wb. The world coordinates are re-projected back into image to estimate the 2D points coordinate for complementary time step and the distance between the true and projected 2D point is minimized using Levenberg-Marquardt least square optimization.  
+Frame to frame camera motion is estimated by minimizing the image re-projection error for all matching feature points. Image re-projection here means that for a pair of corresponding matching points Ja and Jb at time T and T+1, there exits corresponding world coordinates Wa and Wb. The world coordinates are re-projected back into image using a transform (delta) to estimate the 2D points for complementary time step and the distance between the true and projected 2D point is minimized using Levenberg-Marquardt least square optimization.
 
 <div align="center">
 <img src="./docs/reprojection.png" height="275">
